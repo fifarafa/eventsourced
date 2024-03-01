@@ -1,4 +1,4 @@
-![logo.png](logo.png)
+<img src="logo.png" width="300">
 
 # eventsourced
 `eventsourced` is a project aimed at building an event sourcing library in Go. It is designed to be the default choice for building event sourced systems in Go, providing a robust, efficient, and easy-to-use solution for event sourcing needs.

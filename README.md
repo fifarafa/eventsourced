@@ -12,7 +12,7 @@
 - [ ] Analyze library from https://github.com/eugene-khyst/postgresql-event-sourcing and descope it to a minimal version
 - [ ] Build MVP for MVP (something super simple) - using in-memory storage
 
-# Functionalities
+# List of ideas for functionalities (in order of priority)
 - 1st Tier functionalities
   - CreateStream
   - CreateEventsTable

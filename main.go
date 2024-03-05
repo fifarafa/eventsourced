@@ -18,7 +18,7 @@ func main() {
 }
 
 func openMySQLConnection() (*sql.DB, error) {
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/hello")
+	db, err := sql.Open("mysql", "local:local@tcp(127.0.0.1:3306)/local")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -29,5 +29,7 @@ func openMySQLConnection() (*sql.DB, error) {
 }
 
 func createStream(db *sql.DB) error {
-	panic("not implemented")
+	// TODO implement table creation
+	db.Ping()
+	return nil
 }

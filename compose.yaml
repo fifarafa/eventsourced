@@ -1,0 +1,14 @@
+services:
+  local-db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: local
+      MYSQL_USER: local
+      MYSQL_PASSWORD: local
+    ports:
+        - "3306:3306"
+    volumes:
+      - ./data:/var/lib/mysql
+
+

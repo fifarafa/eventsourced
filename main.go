@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 )
 
 func main() {
@@ -15,6 +16,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	log.Println("finished successfully!")
 }
 
 func openMySQLConnection() (*sql.DB, error) {
@@ -29,7 +31,15 @@ func openMySQLConnection() (*sql.DB, error) {
 }
 
 func createStream(db *sql.DB) error {
-	// TODO implement table creation
-	db.Ping()
+	_, err := db.Exec(`
+  		CREATE TABLE IF NOT EXISTS stream(
+  		    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+  		    type VARCHAR(255) NOT NULL,
+  		    version BIGINT NOT NULL
+  		)`,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create stream table: %w", err)
+	}
 	return nil
 }

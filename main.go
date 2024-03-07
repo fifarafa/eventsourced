@@ -60,10 +60,13 @@ func setupDatabase(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	if err := initTables(tx); err != nil {
-		if err := tx.Rollback(); err != nil {
-			return fmt.Errorf("rollback transaction: %w", err)
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Fatalf("rollback transaction: %v", err)
 		}
+	}()
+	if err := initTables(tx); err != nil {
+		return fmt.Errorf("init tables: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)

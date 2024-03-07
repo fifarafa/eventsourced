@@ -8,15 +8,31 @@ import (
 )
 
 func main() {
+	if err := setup(); err != nil {
+		log.Fatalf("setup failed: %v", err)
+	} else {
+		log.Println("setup finished successfully!")
+	}
+}
+
+func setup() error {
 	db, err := openMySQLConnection()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("open mysql connection: %w", err)
 	}
-	err = createStream(db)
+	tx, err := db.Begin()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
-	log.Println("finished successfully!")
+	if err := initTables(tx); err != nil {
+		if err := tx.Rollback(); err != nil {
+			return fmt.Errorf("rollback transaction: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+	return nil
 }
 
 func openMySQLConnection() (*sql.DB, error) {
@@ -30,8 +46,18 @@ func openMySQLConnection() (*sql.DB, error) {
 	return db, nil
 }
 
-func createStream(db *sql.DB) error {
-	_, err := db.Exec(`
+func initTables(tx *sql.Tx) error {
+	if err := createStreamTable(tx); err != nil {
+		return fmt.Errorf("create stream table: %w", err)
+	}
+	if err := createEventsTable(tx); err != nil {
+		return fmt.Errorf("create events table: %w", err)
+	}
+	return nil
+}
+
+func createEventsTable(tx *sql.Tx) error {
+	_, err := tx.Exec(`
   		CREATE TABLE IF NOT EXISTS stream(
   		    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
   		    type VARCHAR(255) NOT NULL,
@@ -39,7 +65,21 @@ func createStream(db *sql.DB) error {
   		)`,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create stream table: %w", err)
+		return fmt.Errorf("exec create events table: %w", err)
+	}
+	return nil
+}
+
+func createStreamTable(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+  		CREATE TABLE IF NOT EXISTS stream(
+  		    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+  		    type VARCHAR(255) NOT NULL,
+  		    version BIGINT NOT NULL
+  		)`,
+	)
+	if err != nil {
+		return fmt.Errorf("exec create stream table: %w", err)
 	}
 	return nil
 }

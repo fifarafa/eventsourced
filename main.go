@@ -7,6 +7,21 @@ import (
 	"log"
 )
 
+const (
+	createStreamTableSQL = `
+    CREATE TABLE IF NOT EXISTS stream(
+        id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+        type VARCHAR(255) NOT NULL,
+        version BIGINT NOT NULL
+    )`
+	createEventsTableSQL = `
+    CREATE TABLE IF NOT EXISTS events(
+        id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+        type VARCHAR(255) NOT NULL,
+        version BIGINT NOT NULL
+    )`
+)
+
 func main() {
 	if err := setup(); err != nil {
 		log.Fatalf("setup failed: %v", err)
@@ -57,39 +72,19 @@ func openMySQLConnection() (*sql.DB, error) {
 }
 
 func initTables(tx *sql.Tx) error {
-	if err := createStreamTable(tx); err != nil {
+	if err := createTable(createStreamTableSQL, tx); err != nil {
 		return fmt.Errorf("create stream table: %w", err)
 	}
-	if err := createEventsTable(tx); err != nil {
+	if err := createTable(createEventsTableSQL, tx); err != nil {
 		return fmt.Errorf("create events table: %w", err)
 	}
 	return nil
 }
 
-func createEventsTable(tx *sql.Tx) error {
-	_, err := tx.Exec(`
-  		CREATE TABLE IF NOT EXISTS stream(
-  		    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
-  		    type VARCHAR(255) NOT NULL,
-  		    version BIGINT NOT NULL
-  		)`,
-	)
+func createTable(sqlStmt string, tx *sql.Tx) error {
+	_, err := tx.Exec(sqlStmt)
 	if err != nil {
-		return fmt.Errorf("exec create events table: %w", err)
-	}
-	return nil
-}
-
-func createStreamTable(tx *sql.Tx) error {
-	_, err := tx.Exec(`
-  		CREATE TABLE IF NOT EXISTS stream(
-  		    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
-  		    type VARCHAR(255) NOT NULL,
-  		    version BIGINT NOT NULL
-  		)`,
-	)
-	if err != nil {
-		return fmt.Errorf("exec create stream table: %w", err)
+		return fmt.Errorf("exec create table: %w", err)
 	}
 	return nil
 }

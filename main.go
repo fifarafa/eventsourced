@@ -44,6 +44,17 @@ func setup() error {
 	return nil
 }
 
+func openMySQLConnection() (*sql.DB, error) {
+	db, err := sql.Open("mysql", "local:local@tcp(127.0.0.1:3306)/local")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func setupDatabase(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -58,17 +69,6 @@ func setupDatabase(db *sql.DB) error {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
-}
-
-func openMySQLConnection() (*sql.DB, error) {
-	db, err := sql.Open("mysql", "local:local@tcp(127.0.0.1:3306)/local")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-	return db, nil
 }
 
 func initTables(tx *sql.Tx) error {

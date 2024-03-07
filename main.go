@@ -20,6 +20,16 @@ func setup() error {
 	if err != nil {
 		return fmt.Errorf("open mysql connection: %w", err)
 	}
+	defer db.Close()
+
+	if err := setupDatabase(db); err != nil {
+		return fmt.Errorf("setup database: %w", err)
+	}
+
+	return nil
+}
+
+func setupDatabase(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)

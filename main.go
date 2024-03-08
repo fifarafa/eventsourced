@@ -17,8 +17,12 @@ const (
 	createEventsTableSQL = `
     CREATE TABLE IF NOT EXISTS events(
         id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+		stream_id BINARY(16) NOT NULL,
+		data JSON NOT NULL,
         type VARCHAR(255) NOT NULL,
-        version BIGINT NOT NULL
+        version BIGINT NOT NULL,
+		created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES stream(id)
     )`
 )
 

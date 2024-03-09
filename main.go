@@ -95,3 +95,11 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 	}
 	return nil
 }
+
+func appendEvent() {
+	// get stream version
+	// if stream doesn't exist - create new one
+	// check optimistic concurrency
+	// append event with version = stream_version + 1
+	// update stream with version = stream_version + 1
+}

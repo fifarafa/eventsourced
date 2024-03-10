@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"log"
 )
 
@@ -96,7 +98,8 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 	return nil
 }
 
-func appendEvent() {
+// TODO add support for multiple events in a stream
+func appendSingleEvent(streamID uuid.UUID, event json.RawMessage, expectedVersion int64) {
 	// get stream version
 	// if stream doesn't exist - create new one
 	// check optimistic concurrency

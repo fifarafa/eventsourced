@@ -99,10 +99,40 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 }
 
 // TODO add support for multiple events in a stream
-func appendSingleEvent(streamID uuid.UUID, event json.RawMessage, expectedVersion int64) {
+// TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
+func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, expectedVersion int64) error {
 	// get stream version
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+
+	}
+	strVer, err := getStreamVersion(tx, streamID)
+	if err != nil {
+		return fmt.Errorf("get stream version: %w", err)
+	}
+	log.Println(string(strVer))
+	return nil
 	// if stream doesn't exist - create new one
 	// check optimistic concurrency
 	// append event with version = stream_version + 1
 	// update stream with version = stream_version + 1
+}
+
+func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) ([]byte, error) {
+	stmt, err := tx.Prepare("SELECT version FROM stream WHERE id = (?)")
+	if err != nil {
+		return nil, fmt.Errorf("prepare select stream version: %w", err)
+	}
+	var version []byte
+	err = stmt.QueryRow(streamID).Scan(version)
+	if err != nil {
+		return nil, fmt.Errorf("query stream version: %w", err)
+	}
+	defer func() {
+		if err := stmt.Close(); err != nil {
+			log.Fatalf("close statement: %v", err)
+		}
+	}()
+	return version, nil
 }

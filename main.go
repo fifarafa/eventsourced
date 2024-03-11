@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -108,12 +109,16 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 
 	}
 	strVer, err := getStreamVersion(tx, streamID)
-	if err != nil {
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// create new stream
+	case err != nil:
 		return fmt.Errorf("get stream version: %w", err)
 	}
 	log.Println(string(strVer))
 	return nil
 	// if stream doesn't exist - create new one
+
 	// check optimistic concurrency
 	// append event with version = stream_version + 1
 	// update stream with version = stream_version + 1
@@ -127,7 +132,7 @@ func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) ([]byte, error) {
 	var version []byte
 	err = stmt.QueryRow(streamID).Scan(version)
 	if err != nil {
-		return nil, fmt.Errorf("query stream version: %w", err)
+		return nil, fmt.Errorf("query row: %w", err)
 	}
 	defer func() {
 		if err := stmt.Close(); err != nil {

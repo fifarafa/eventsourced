@@ -111,7 +111,9 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	strVer, err := getStreamVersion(tx, streamID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		// create new stream
+		if err := createStream(tx, streamID, "test"); err != nil {
+			return fmt.Errorf("create stream: %w", err)
+		}
 	case err != nil:
 		return fmt.Errorf("get stream version: %w", err)
 	}
@@ -140,4 +142,12 @@ func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) ([]byte, error) {
 		}
 	}()
 	return version, nil
+}
+
+func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) error {
+	_, err := tx.Exec("INSERT INTO stream (id, type, version) VALUES (?, ?, ?)", streamID, streamType, 0)
+	if err != nil {
+		return fmt.Errorf("exec insert stream: %w", err)
+	}
+	return nil
 }

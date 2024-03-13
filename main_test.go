@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TODO run this test using 3rd party library for setting up and tearing down the database
 func TestWhenNoStreamsYet(t *testing.T) {
 	// given
 	if err := setup(); err != nil {

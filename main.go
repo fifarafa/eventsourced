@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	createStreamTableSQL = `
-    CREATE TABLE IF NOT EXISTS stream(
+	createStreamsTableSQL = `
+    CREATE TABLE IF NOT EXISTS streams(
         id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
         type VARCHAR(255) NOT NULL,
         version BIGINT NOT NULL
@@ -82,7 +82,7 @@ func setupDatabase(db *sql.DB) error {
 }
 
 func initTables(tx *sql.Tx) error {
-	if err := createTable(createStreamTableSQL, tx); err != nil {
+	if err := createTable(createStreamsTableSQL, tx); err != nil {
 		return fmt.Errorf("create stream table: %w", err)
 	}
 	if err := createTable(createEventsTableSQL, tx); err != nil {
@@ -106,35 +106,34 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
-
 	}
 	strVer, err := getStreamVersion(tx, streamID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		if err := createStream(tx, streamID, "test"); err != nil {
+		newStreamID, err := createStream(tx, "test")
+		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
 		}
+		streamID = newStreamID
 	case err != nil:
 		return fmt.Errorf("get stream version: %w", err)
 	}
-	log.Println(string(strVer))
+	log.Println("streamID", streamID, "version", strVer)
 	return nil
-	// if stream doesn't exist - create new one
-
 	// check optimistic concurrency
 	// append event with version = stream_version + 1
 	// update stream with version = stream_version + 1
 }
 
-func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) ([]byte, error) {
+func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
 	stmt, err := tx.Prepare("SELECT version FROM stream WHERE id = (?)")
 	if err != nil {
-		return nil, fmt.Errorf("prepare select stream version: %w", err)
+		return 0, fmt.Errorf("prepare select stream version: %w", err)
 	}
-	var version []byte
+	var version int64
 	err = stmt.QueryRow(streamID).Scan(version)
 	if err != nil {
-		return nil, fmt.Errorf("query row: %w", err)
+		return 0, fmt.Errorf("query row: %w", err)
 	}
 	defer func() {
 		if err := stmt.Close(); err != nil {
@@ -144,10 +143,22 @@ func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) ([]byte, error) {
 	return version, nil
 }
 
-func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) error {
-	_, err := tx.Exec("INSERT INTO stream (id, type, version) VALUES (?, ?, ?)", streamID, streamType, 0)
+func createStream(tx *sql.Tx, streamType string) (uuid.UUID, error) {
+	stmt, err := tx.Prepare("INSERT INTO streams (id, type, version) VALUES (?, ?, ?)")
 	if err != nil {
-		return fmt.Errorf("exec insert stream: %w", err)
+		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
-	return nil
+	streamID := uuid.New()
+	res, err := stmt.Exec(streamID[:], streamType, 0)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("rows affected: %w", err)
+	}
+	if rows != 1 {
+		return uuid.UUID{}, fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
+	return streamID, nil
 }

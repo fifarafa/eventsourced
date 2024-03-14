@@ -15,9 +15,9 @@
 
 # Planned features (in order of priority)
 - 1st Tier functionalities
-  - CreateStream
-  - CreateEventsTable
-  - CreateAppendEventFunction
+  - [X] CreateStream
+  - [X] CreateEventsTable
+  - [In progress] CreateAppendEventFunction
     - It should support strong consistency, so we can read our own writes
     - Putting a simple INSERT, will make us vulnerable to all consistency issues
     - It should support Optimistic Concurrency model
@@ -34,3 +34,4 @@
 - 3rd Tier functionalities
   - Projections - consistent updates of the read model
   - Subscriptions - async projections
+

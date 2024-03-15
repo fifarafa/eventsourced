@@ -27,6 +27,7 @@ const (
 		created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES stream(id)
     )`
+	insertStreamSQL = `INSERT INTO streams (id, type, version) VALUES (?, ?, ?)`
 )
 
 func main() {
@@ -144,7 +145,7 @@ func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
 }
 
 func createStream(tx *sql.Tx, streamType string) (uuid.UUID, error) {
-	stmt, err := tx.Prepare("INSERT INTO streams (id, type, version) VALUES (?, ?, ?)")
+	stmt, err := tx.Prepare(insertStreamSQL)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}

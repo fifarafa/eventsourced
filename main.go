@@ -28,6 +28,8 @@ const (
 		CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES stream(id)
     )`
 	insertStreamSQL = `INSERT INTO streams (id, type, version) VALUES (?, ?, ?)`
+
+	minimalSafeIsolationLevel = "READ COMMITTED"
 )
 
 func main() {
@@ -108,6 +110,10 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
+	if err := setTransactionIsolationLevel(tx, minimalSafeIsolationLevel); err != nil {
+		return fmt.Errorf("set transaction isolation level: %w", err)
+	}
+
 	strVer, err := getStreamVersion(tx, streamID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -119,6 +125,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	case err != nil:
 		return fmt.Errorf("get stream version: %w", err)
 	}
+
 	log.Println("streamID", streamID, "version", strVer)
 	return nil
 	// check optimistic concurrency
@@ -162,4 +169,12 @@ func createStream(tx *sql.Tx, streamType string) (uuid.UUID, error) {
 		return uuid.UUID{}, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
 	return streamID, nil
+}
+
+func setTransactionIsolationLevel(tx *sql.Tx, level string) error {
+	_, err := tx.Exec("SET TRANSACTION ISOLATION LEVEL " + level)
+	if err != nil {
+		return fmt.Errorf("db exec: %w", err)
+	}
+	return nil
 }

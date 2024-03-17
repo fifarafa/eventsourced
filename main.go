@@ -127,10 +127,18 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	}
 
 	log.Println("streamID", streamID, "version", strVer)
-	return nil
-	// check optimistic concurrency
-	// append event with version = stream_version + 1
+
+	// optimistic concurrency with insertion
+	/*
+			INSERT INTO events (stream_id, version, event_data)
+		SELECT * FROM (SELECT ? AS stream_id, ? AS version, ? AS event_data) AS tmp
+		WHERE NOT EXISTS (
+		    SELECT 1 FROM events WHERE stream_id = ? AND version >= ?
+		)
+	*/
+
 	// update stream with version = stream_version + 1
+	return nil
 }
 
 func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {

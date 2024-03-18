@@ -141,6 +141,17 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	return nil
 }
 
+func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
+	query := `INSERT INTO events (stream_id, version, event_data)
+              SELECT * FROM (SELECT ?, ?, ?) AS tmp
+              WHERE NOT EXISTS (SELECT 1 FROM events WHERE stream_id = ? AND version >= ?)`
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return 0, fmt.Errorf("prepare insert event: %w", err)
+	}
+}
+
 func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
 	stmt, err := tx.Prepare("SELECT version FROM stream WHERE id = (?)")
 	if err != nil {

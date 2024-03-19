@@ -128,14 +128,8 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 
 	log.Println("streamID", streamID, "version", strVer)
 
-	// optimistic concurrency with insertion
-	/*
-			INSERT INTO events (stream_id, version, event_data)
-		SELECT * FROM (SELECT ? AS stream_id, ? AS version, ? AS event_data) AS tmp
-		WHERE NOT EXISTS (
-		    SELECT 1 FROM events WHERE stream_id = ? AND version >= ?
-		)
-	*/
+	//TODO test it
+	conditionalInsertion()
 
 	// update stream with version = stream_version + 1
 	return nil

@@ -104,7 +104,7 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 
 // TODO add support for multiple events in a stream
 // TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
-func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, expectedVersion int64) error {
+func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
 	// get stream version
 	tx, err := db.Begin()
 	if err != nil {
@@ -135,15 +135,20 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, ex
 	return nil
 }
 
-func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
-	query := `INSERT INTO events (stream_id, version, event_data)
+// providedExpectedVersion should be equal to stream version saved in the db
+// because it means that decision is being made on the latest state
+// if it's different (smaller or bigger), the whole operation should be rejected
+func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) (int64, error) {
+	statement := `INSERT INTO events (stream_id, version, event_data)
               SELECT * FROM (SELECT ?, ?, ?) AS tmp
-              WHERE NOT EXISTS (SELECT 1 FROM events WHERE stream_id = ? AND version >= ?)`
+              WHERE NOT EXISTS (SELECT 1 FROM events WHERE stream_id = ? AND version = ?)`
 
-	stmt, err := tx.Prepare(query)
+	stmt, err := tx.Prepare(statement)
 	if err != nil {
 		return 0, fmt.Errorf("prepare insert event: %w", err)
 	}
+
+	stmt.Exec(streamID[:], providedExpectedVersion, event, streamID[:], providedExpectedVersion)
 }
 
 func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {

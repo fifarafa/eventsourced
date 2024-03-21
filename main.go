@@ -105,7 +105,6 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 // TODO add support for multiple events in a stream
 // TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
 func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
-	// get stream version
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -128,27 +127,43 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 
 	log.Println("streamID", streamID, "version", strVer)
 
-	//TODO test it
-	conditionalInsertion()
+	if err := conditionalInsertion(tx, streamID, providedExpectedVersion, event); err != nil {
+		return fmt.Errorf("conditional insertion: %w", err)
+	}
 
 	// update stream with version = stream_version + 1
+	// make sure it's concurrent safe
+	// check while writing if version is still the same, if not reject transaction
 	return nil
 }
 
 // providedExpectedVersion should be equal to stream version saved in the db
 // because it means that decision is being made on the latest state
 // if it's different (smaller or bigger), the whole operation should be rejected
-func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) (int64, error) {
+func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
 	statement := `INSERT INTO events (stream_id, version, event_data)
               SELECT * FROM (SELECT ?, ?, ?) AS tmp
               WHERE NOT EXISTS (SELECT 1 FROM events WHERE stream_id = ? AND version = ?)`
 
 	stmt, err := tx.Prepare(statement)
 	if err != nil {
-		return 0, fmt.Errorf("prepare insert event: %w", err)
+		return fmt.Errorf("prepare insert event: %w", err)
 	}
 
-	stmt.Exec(streamID[:], providedExpectedVersion, event, streamID[:], providedExpectedVersion)
+	res, err := stmt.Exec(
+		streamID[:], providedExpectedVersion, event,
+		streamID[:], providedExpectedVersion)
+	if err != nil {
+		return fmt.Errorf("exec insert event: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
+	return nil
 }
 
 func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {

@@ -116,6 +116,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 	strVer, err := getStreamVersion(tx, streamID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
+		//TODO set stream type
 		newStreamID, err := createStream(tx, "test")
 		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
@@ -134,6 +135,30 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 	// update stream with version = stream_version + 1
 	// make sure it's concurrent safe
 	// check while writing if version is still the same, if not reject transaction
+	if err := conditionalIncrementStreamVersion(tx, streamID, providedExpectedVersion); err != nil {
+		return fmt.Errorf("conditional increment stream version: %w", err)
+	}
+
+	return nil
+}
+
+func conditionalIncrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
+	statement := "UPDATE streams SET version = ? WHERE id = ? AND version = ?"
+	stmt, err := tx.Prepare(statement)
+	if err != nil {
+		return fmt.Errorf("prepare update stream version: %w", err)
+	}
+	res, err := stmt.Exec(version+1, id, version)
+	if err != nil {
+		return fmt.Errorf("exec update stream version: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
 	return nil
 }
 
@@ -143,7 +168,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
 	statement := `INSERT INTO events (stream_id, version, event_data)
               SELECT * FROM (SELECT ?, ?, ?) AS tmp
-              WHERE NOT EXISTS (SELECT 1 FROM events WHERE stream_id = ? AND version = ?)`
+              WHERE NOT EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
 
 	stmt, err := tx.Prepare(statement)
 	if err != nil {
@@ -151,7 +176,7 @@ func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersio
 	}
 
 	res, err := stmt.Exec(
-		streamID[:], providedExpectedVersion, event,
+		streamID[:], providedExpectedVersion+1, event,
 		streamID[:], providedExpectedVersion)
 	if err != nil {
 		return fmt.Errorf("exec insert event: %w", err)

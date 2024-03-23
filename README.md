@@ -35,3 +35,6 @@
   - Projections - consistent updates of the read model
   - Subscriptions - async projections
 
+# Inspirations
+- https://github.com/EventStore/EventStore-Client-Go
+- https://github.com/hallgren/eventsourcing

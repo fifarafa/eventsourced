@@ -117,7 +117,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		//TODO set stream type
-		newStreamID, err := createStream(tx, "test")
+		newStreamID, err := createStream(tx, streamID, "test")
 		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
 		}
@@ -209,12 +209,11 @@ func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
 	return version, nil
 }
 
-func createStream(tx *sql.Tx, streamType string) (uuid.UUID, error) {
+func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID, error) {
 	stmt, err := tx.Prepare(insertStreamSQL)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
-	streamID := uuid.New()
 	res, err := stmt.Exec(streamID[:], streamType, 0)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)

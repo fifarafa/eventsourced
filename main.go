@@ -27,7 +27,10 @@ const (
 		created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES stream(id)
     )`
-	insertStreamSQL = `INSERT INTO streams (id, type, version) VALUES (?, ?, ?)`
+	insertStreamSQL = `
+	INSERT INTO streams (id, type, version)
+	SELECT * FROM (SELECT ?, ?, ?) AS tmp
+    WHERE NOT EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
 
 	minimalSafeIsolationLevel = "READ COMMITTED"
 )
@@ -113,20 +116,16 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 		return fmt.Errorf("set transaction isolation level: %w", err)
 	}
 
-	strVer, err := getStreamVersion(tx, streamID)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		//TODO set stream type
-		newStreamID, err := createStream(tx, streamID, "test")
+	doesExist, err := streamExists(tx, streamID)
+	if err != nil {
+		return fmt.Errorf("stream exists: %w", err)
+	}
+	if !doesExist {
+		_, err := createStream(tx, streamID, "test")
 		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
 		}
-		streamID = newStreamID
-	case err != nil:
-		return fmt.Errorf("get stream version: %w", err)
 	}
-
-	log.Println("streamID", streamID, "version", strVer)
 
 	if err := conditionalInsertion(tx, streamID, providedExpectedVersion, event); err != nil {
 		return fmt.Errorf("conditional insertion: %w", err)
@@ -191,22 +190,28 @@ func conditionalInsertion(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersio
 	return nil
 }
 
-func getStreamVersion(tx *sql.Tx, streamID uuid.UUID) (int64, error) {
+func streamExists(tx *sql.Tx, streamID uuid.UUID) (bool, error) {
 	stmt, err := tx.Prepare("SELECT version FROM stream WHERE id = (?)")
 	if err != nil {
-		return 0, fmt.Errorf("prepare select stream version: %w", err)
+		return false, fmt.Errorf("prepare select stream version: %w", err)
 	}
 	var version int64
 	err = stmt.QueryRow(streamID).Scan(version)
 	if err != nil {
-		return 0, fmt.Errorf("query row: %w", err)
+		return false, fmt.Errorf("query row: %w", err)
+	}
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("get stream version: %w", err)
 	}
 	defer func() {
 		if err := stmt.Close(); err != nil {
 			log.Fatalf("close statement: %v", err)
 		}
 	}()
-	return version, nil
+	return true, nil
 }
 
 func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID, error) {
@@ -214,7 +219,11 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
-	res, err := stmt.Exec(streamID[:], streamType, 0)
+	res, err := stmt.Exec(
+		streamID[:], streamType, 0,
+		streamID[:], 0,
+	)
+	//TODO check what error is returned here is stream already exists
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}

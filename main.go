@@ -29,8 +29,8 @@ const (
     	)`
 	insertStreamSQL = `
 		INSERT INTO streams (id, type, version)
-		SELECT * FROM (SELECT ?, ?, ?) AS tmp
-    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
+		SELECT ?, ?, ? FROM DUAL
+    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 	getStreamVersionSQL = `
 		SELECT version FROM streams WHERE id = (?)`
 	incrementStreamVersionSQL = `
@@ -109,22 +109,34 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 	return nil
 }
 
-// TODO add support for multiple events in a stream
-// TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
 func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
-	// TODO start this transaction in a separate function
-	// to not mix essential complexity with accidental complexity
+	if err := setTransactionIsolationLevel(db, minimalSafeIsolationLevel); err != nil {
+		return fmt.Errorf("set transaction isolation level: %w", err)
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	if err := setTransactionIsolationLevel(tx, minimalSafeIsolationLevel); err != nil {
-		return fmt.Errorf("set transaction isolation level: %w", err)
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Fatalf("rollback transaction: %v", err)
+		}
+	}()
+	if err := appendSingleEventInner(tx, streamID, event, providedExpectedVersion); err != nil {
+		return err
 	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+	return nil
+}
 
+// TODO add support for multiple events in a stream
+// TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
+func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
 	doesExist, err := streamExists(tx, streamID)
 	if err != nil {
-		return fmt.Errorf("stream exists: %w", err)
+		return fmt.Errorf("checking if stream exists: %w", err)
 	}
 	if !doesExist {
 		_, err := createStream(tx, streamID, "test")
@@ -167,9 +179,9 @@ func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
 // because it means that decision is being made on the latest state
 // if it's different (smaller or bigger), the whole operation should be rejected
 func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
-	statement := `INSERT INTO events (stream_id, version, event_data)
-              SELECT * FROM (SELECT ?, ?, ?) AS tmp
-              WHERE NOT EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
+	statement := `INSERT INTO events (stream_id, version, data, type)
+              SELECT ?, ?, ?, ? FROM DUAL
+              WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 
 	stmt, err := tx.Prepare(statement)
 	if err != nil {
@@ -177,7 +189,7 @@ func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, 
 	}
 
 	res, err := stmt.Exec(
-		streamID[:], providedExpectedVersion+1, event,
+		streamID[:], providedExpectedVersion+1, event, "test",
 		streamID[:], providedExpectedVersion)
 	if err != nil {
 		return fmt.Errorf("exec insert event: %w", err)
@@ -199,9 +211,6 @@ func streamExists(tx *sql.Tx, streamID uuid.UUID) (bool, error) {
 	}
 	var version int64
 	err = stmt.QueryRow(streamID).Scan(version)
-	if err != nil {
-		return false, fmt.Errorf("query row: %w", err)
-	}
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return false, nil
@@ -239,8 +248,8 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 	return streamID, nil
 }
 
-func setTransactionIsolationLevel(tx *sql.Tx, level string) error {
-	_, err := tx.Exec("SET TRANSACTION ISOLATION LEVEL " + level)
+func setTransactionIsolationLevel(db *sql.DB, level string) error {
+	_, err := db.Exec("SET TRANSACTION ISOLATION LEVEL " + level)
 	if err != nil {
 		return fmt.Errorf("db exec: %w", err)
 	}

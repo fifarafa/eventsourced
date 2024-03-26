@@ -35,6 +35,10 @@ const (
 		SELECT version FROM streams WHERE id = (?)`
 	incrementStreamVersionSQL = `
 		UPDATE streams SET version = ? WHERE id = ? AND version = ?`
+	insertEventSQL = `
+		INSERT INTO events (stream_id, version, data, type)
+        SELECT ?, ?, ?, ? FROM DUAL
+        WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 
 	minimalSafeIsolationLevel = "READ COMMITTED"
 )
@@ -179,11 +183,7 @@ func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
 // because it means that decision is being made on the latest state
 // if it's different (smaller or bigger), the whole operation should be rejected
 func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
-	statement := `INSERT INTO events (stream_id, version, data, type)
-              SELECT ?, ?, ?, ? FROM DUAL
-              WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
-
-	stmt, err := tx.Prepare(statement)
+	stmt, err := tx.Prepare(insertEventSQL)
 	if err != nil {
 		return fmt.Errorf("prepare insert event: %w", err)
 	}

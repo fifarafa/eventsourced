@@ -38,3 +38,4 @@
 # Inspirations
 - https://github.com/EventStore/EventStore-Client-Go
 - https://github.com/hallgren/eventsourcing
+- https://railseventstore.org/docs/v2/expected_version/

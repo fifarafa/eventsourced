@@ -34,6 +34,8 @@
 - 3rd Tier functionalities
   - Projections - consistent updates of the read model
   - Subscriptions - async projections
+- Ideas for future
+  - Support Global streams as in Rails Event Store
 
 # Inspirations
 - https://github.com/EventStore/EventStore-Client-Go

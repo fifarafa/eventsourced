@@ -56,7 +56,11 @@ func setup() error {
 	if err != nil {
 		return fmt.Errorf("open mysql connection: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close db: %v", err)
+		}
+	}()
 
 	if err := setupDatabase(db); err != nil {
 		return fmt.Errorf("setup database: %w", err)

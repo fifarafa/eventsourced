@@ -2,42 +2,46 @@
   <img src="logo.png" width="500">
 </p>
 
-# eventsourced
-`eventsourced` is a project aimed at building an event sourcing library in Go. It is designed to be the default choice for building event sourced systems in Go, providing a robust, efficient, and easy-to-use solution for event sourcing needs.
+# Welcome to EventSourced! 🚀
 
-# Materials
-- [X] Watch Oskar Dudycz's talk on building an event store - https://youtu.be/gaoZdtQSOTo?si=5fGoIchkE48wZzoX
-- [ ] Watch Alexey Zimarev webinar - You don't need an Event Sourcing framework. Or do you? - https://www.architecture-weekly.com/p/webinar-6-webinar-with-alexey-zimarev
-- [ ] Research libraries in other languages, understand their strong points and weaknesses
-- [ ] Analyze library from https://github.com/eugene-khyst/postgresql-event-sourcing and descope it to a minimal version
-- [ ] Build MVP for MVP (something super simple) - using in-memory storage
-- [ ] Learn nitty-gritty of sql.DB from http://go-database-sql.org
+**EventSourced** is your friendly neighborhood library for building event sourcing solutions in Go! If you're looking to add event sourcing patterns to your projects and crave for a tool that blends robustness, efficiency, and simplicity, you've hit the jackpot!
 
-# Planned features (in order of priority)
-- 1st Tier functionalities
-  - [X] CreateStream
-  - [X] CreateEventsTable
-  - [In progress] CreateAppendEventFunction
-    - It should support strong consistency, so we can read our own writes
-    - Putting a simple INSERT, will make us vulnerable to all consistency issues
-    - It should support Optimistic Concurrency model
-    - In Postgres, using a stored procedure, it makes operations in a single transaction giving us strong consistency
-    - It should support appending multiple events at once
-  - GetEvents based on the stream ID
-    - Support stream version as optional parameter
-    - Support timestamp as optional parameter
-  - Should support Postgres and DynamoDB as storage
-  - Should have integration tests for both storages
-- 2nd Tier functionalities 
-  - generic FlattenStream function to get the current state of the stream
-  - generic command handler, that accepts a command, current state and returns a list of events
-- 3rd Tier functionalities
-  - Projections - consistent updates of the read model
-  - Subscriptions - async projections
-- Ideas for future
-  - Support Global streams as in Rails Event Store
+## 📚 Learning Resources
 
-# Inspirations
-- https://github.com/EventStore/EventStore-Client-Go
-- https://github.com/hallgren/eventsourcing
-- https://railseventstore.org/docs/v2/expected_version/
+To kickstart your event sourcing journey or deepen your understanding, we've curated a list of essential materials:
+
+- ✅ **[Watch Oskar Dudycz's insightful talk on building an event store](https://youtu.be/gaoZdtQSOTo?si=5fGoIchkE48wZzoX)** - A great introduction to the basics and beyond.
+- 🔜 **[Alexey Zimarev's Webinar: You don't need an Event Sourcing framework. Or do you?](https://www.architecture-weekly.com/p/webinar-6-webinar-with-alexey-zimarev)** - A thought-provoking session on the necessity of event sourcing frameworks.
+- 🔍 Explore libraries in different programming languages to grasp their strengths and limitations.
+- 🧐 Delve into the library from [this GitHub repository](https://github.com/eugene-khyst/postgresql-event-sourcing) and simplify it to its core essence.
+- 🏗 Construct a Minimal Viable Product (MVP) using in-memory storage for a straightforward starting point.
+- 📘 Dive deep into the nuances of `sql.DB` through [this comprehensive guide](http://go-database-sql.org).
+
+## 🌟 What's Cooking? - Planned Features
+
+**EventSourced** is designed with a vision to cater to a broad range of event sourcing needs, structured across different tiers of functionalities:
+
+### Tier 1 Features - The Essentials
+- ✅ **Stream Creation** - Lay the foundation of your event sourcing with stream creation.
+- ✅ **Event Tables** - A place for your events to call home.
+- 🚧 **Appending Events** - We're working on making this process seamless, supporting:
+  - Strong consistency for read-after-write peace of mind.
+  - Optimistic Concurrency to keep data races at bay.
+  - Batch event appending for efficiency.
+- **Event Retrieval** - Fetch events with flexibility, based on stream ID, version, or timestamp.
+- **Storage Support** - We love Postgres and DynamoDB, and so does EventSourced! Full integration tests included.
+
+### Tier 2 Features - The Upgrades
+- A **FlattenStream** function to snapshot the current state of any stream.
+- A **Generic Command Handler** for transforming commands into events, considering the current state.
+
+### Tier 3 Features - The Innovations
+- **Projections** for consistent read model updates.
+- **Subscriptions** for asynchronous projections.
+
+### Future Ideas 💡
+- We're dreaming about supporting Global streams, inspired by Rails Event Store.
+
+## 🎨 Inspiration Corner
+
+Our journey is fueled by the incredible work of others. Here are a few repositories

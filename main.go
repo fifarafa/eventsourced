@@ -29,7 +29,7 @@ const (
     	)`
 	insertStreamSQL = `
 		INSERT INTO streams (id, type, version)
-		SELECT ?, ?, ? FROM DUAL
+		SELECT ?, ?, ?
     	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 	getStreamVersionSQL = `
 		SELECT version FROM streams WHERE id = (?)`
@@ -37,7 +37,7 @@ const (
 		UPDATE streams SET version = ? WHERE id = ? AND version = ?`
 	insertEventSQL = `
 		INSERT INTO events (stream_id, version, data, type)
-        SELECT ?, ?, ?, ? FROM DUAL
+        SELECT ?, ?, ?, ?
         WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 
 	minimalSafeIsolationLevel = "READ COMMITTED"
@@ -249,6 +249,7 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 	if rows != 1 {
 		return uuid.UUID{}, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
+	log.Print(streamID.String())
 	return streamID, nil
 }
 

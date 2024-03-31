@@ -45,3 +45,6 @@ To kickstart your event sourcing journey or deepen your understanding, we've cur
 ## 🎨 Inspiration Corner
 
 Our journey is fueled by the incredible work of others. Here are a few repositories
+- https://github.com/EventStore/EventStore-Client-Go
+- https://github.com/hallgren/eventsourcing
+- https://railseventstore.org/docs/v2/expected_version/

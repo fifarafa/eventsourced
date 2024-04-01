@@ -38,7 +38,7 @@ const (
 	insertEventSQL = `
 		INSERT INTO events (stream_id, version, data, type)
         SELECT ?, ?, ?, ?
-        WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
+        WHERE EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 
 	minimalSafeIsolationLevel = "READ COMMITTED"
 )

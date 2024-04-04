@@ -6,42 +6,39 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"log"
 )
 
 const (
 	createStreamsTableSQL = `
-    	CREATE TABLE streams
-		(
-		    id      	INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		    stream_id 	VARCHAR(255) NOT NULL,
-		    type    	VARCHAR(255) NOT NULL,
-		    version 	BIGINT       NOT NULL
-		)`
+    	CREATE TABLE IF NOT EXISTS streams(
+    	    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+    	    type VARCHAR(255) NOT NULL,
+    	    version BIGINT NOT NULL
+    	)`
 	createEventsTableSQL = `
-		CREATE TABLE events
-		(
-		    id        INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		    event_id  VARCHAR(255) NOT NULL,
-		    stream_id INT 		   NOT NULL,
-		    data      JSON         NOT NULL,
-		    type      VARCHAR(255) NOT NULL,
-		    version   BIGINT       NOT NULL,
-		    created   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		    CONSTRAINT events_streams_id_fk FOREIGN KEY (stream_id) REFERENCES streams (id)
-		)`
+    	CREATE TABLE IF NOT EXISTS events(
+    	    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+			stream_id BINARY(16) NOT NULL,
+			data JSON NOT NULL,
+    	    type VARCHAR(255) NOT NULL,
+    	    version BIGINT NOT NULL,
+			created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES streams(id)
+    	)`
 	insertStreamSQL = `
-		INSERT INTO streams (stream_id, type, version)
+		INSERT INTO streams (id, type, version)
 		SELECT ?, ?, ?
-    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
+    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 	getStreamVersionSQL = `
-		SELECT version FROM streams WHERE stream_id = (?)`
+		SELECT version FROM streams WHERE id = (?)`
 	incrementStreamVersionSQL = `
-		UPDATE streams SET version = ? WHERE stream_id = ? AND version = ?`
+		UPDATE streams SET version = ? WHERE id = ? AND version = ?`
 	insertEventSQL = `
 		INSERT INTO events (stream_id, version, data, type)
         SELECT ?, ?, ?, ?
-        WHERE EXISTS (SELECT 1 FROM streams WHERE stream_id = ? AND version = ?)`
+        WHERE EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
 
 	minimalSafeIsolationLevel = "READ COMMITTED"
 )
@@ -120,7 +117,7 @@ func createTable(sqlStmt string, tx *sql.Tx) error {
 	return nil
 }
 
-func appendSingleEvent(db *sql.DB, streamID string, event json.RawMessage, providedExpectedVersion int64) error {
+func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
 	if err := setTransactionIsolationLevel(db, minimalSafeIsolationLevel); err != nil {
 		return fmt.Errorf("set transaction isolation level: %w", err)
 	}
@@ -144,7 +141,7 @@ func appendSingleEvent(db *sql.DB, streamID string, event json.RawMessage, provi
 
 // TODO add support for multiple events in a stream
 // TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
-func appendSingleEventInner(tx *sql.Tx, streamID string, event json.RawMessage, providedExpectedVersion int64) error {
+func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
 	doesExist, err := streamExists(tx, streamID)
 	if err != nil {
 		return fmt.Errorf("checking if stream exists: %w", err)
@@ -167,7 +164,7 @@ func appendSingleEventInner(tx *sql.Tx, streamID string, event json.RawMessage, 
 	return nil
 }
 
-func incrementStreamVersion(tx *sql.Tx, id string, version int64) error {
+func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
 	stmt, err := tx.Prepare(incrementStreamVersionSQL)
 	if err != nil {
 		return fmt.Errorf("prepare update stream version: %w", err)
@@ -189,7 +186,7 @@ func incrementStreamVersion(tx *sql.Tx, id string, version int64) error {
 // providedExpectedVersion should be equal to stream version saved in the db
 // because it means that decision is being made on the latest state
 // if it's different (smaller or bigger), the whole operation should be rejected
-func insertEvent(tx *sql.Tx, streamID string, providedExpectedVersion int64, event json.RawMessage) error {
+func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
 	stmt, err := tx.Prepare(insertEventSQL)
 	if err != nil {
 		return fmt.Errorf("prepare insert event: %w", err)
@@ -211,7 +208,7 @@ func insertEvent(tx *sql.Tx, streamID string, providedExpectedVersion int64, eve
 	return nil
 }
 
-func streamExists(tx *sql.Tx, streamID string) (bool, error) {
+func streamExists(tx *sql.Tx, streamID uuid.UUID) (bool, error) {
 	stmt, err := tx.Prepare(getStreamVersionSQL)
 	if err != nil {
 		return false, fmt.Errorf("prepare select stream version: %w", err)
@@ -232,10 +229,10 @@ func streamExists(tx *sql.Tx, streamID string) (bool, error) {
 	return true, nil
 }
 
-func createStream(tx *sql.Tx, streamID string, streamType string) (string, error) {
+func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID, error) {
 	stmt, err := tx.Prepare(insertStreamSQL)
 	if err != nil {
-		return "", fmt.Errorf("exec insert stream: %w", err)
+		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	res, err := stmt.Exec(
 		streamID[:], streamType, 0,
@@ -243,16 +240,16 @@ func createStream(tx *sql.Tx, streamID string, streamType string) (string, error
 	)
 	//TODO check what error is returned here is stream already exists
 	if err != nil {
-		return "", fmt.Errorf("exec insert stream: %w", err)
+		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return "", fmt.Errorf("rows affected: %w", err)
+		return uuid.UUID{}, fmt.Errorf("rows affected: %w", err)
 	}
 	if rows != 1 {
-		return "", fmt.Errorf("expected 1 row affected, got %d", rows)
+		return uuid.UUID{}, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
-	log.Print(streamID)
+	log.Print(streamID.String())
 	return streamID, nil
 }
 

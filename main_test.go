@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ func TestWhenNoStreamsYet(t *testing.T) {
 
 	rawMsg := json.RawMessage(`{"key": "value"}`)
 	// when & then
-	if err := appendSingleEvent(db, "", rawMsg, 1); err != nil {
+	if err := appendSingleEvent(db, uuid.New(), rawMsg, 1); err != nil {
 		t.Errorf("failed to append event: %v", err)
 	}
 }

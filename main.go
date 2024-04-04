@@ -13,7 +13,7 @@ import (
 const (
 	createStreamsTableSQL = `
     	CREATE TABLE IF NOT EXISTS streams(
-    	    id BINARY(16) DEFAULT (UUID_TO_BIN(UUID())) PRIMARY KEY,
+    	    id BINARY(16) PRIMARY KEY,
     	    type VARCHAR(255) NOT NULL,
     	    version BIGINT NOT NULL
     	)`
@@ -169,7 +169,7 @@ func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
 	if err != nil {
 		return fmt.Errorf("prepare update stream version: %w", err)
 	}
-	res, err := stmt.Exec(version+1, id, version)
+	res, err := stmt.Exec(version+1, id[:], version)
 	if err != nil {
 		return fmt.Errorf("exec update stream version: %w", err)
 	}
@@ -235,8 +235,8 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	res, err := stmt.Exec(
-		streamID[:], streamType, 0,
-		streamID[:], 0,
+		streamID[:], streamType, -1,
+		streamID[:], -1,
 	)
 	//TODO check what error is returned here is stream already exists
 	if err != nil {

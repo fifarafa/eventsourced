@@ -43,6 +43,7 @@ func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessag
 	if err != nil {
 		return fmt.Errorf("checking if stream exists: %w", err)
 	}
+	// what if now some other transaction creates the stream?
 	if !doesExist {
 		_, err := createStream(tx, streamID, "test")
 		if err != nil {
@@ -132,8 +133,8 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	res, err := stmt.Exec(
-		streamID[:], streamType, initialStreamVersion,
-		streamID[:], initialStreamVersion,
+		streamID[:], streamType,
+		streamID[:],
 	)
 	//TODO check what error is returned here is stream already exists
 	if err != nil {

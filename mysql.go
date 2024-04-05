@@ -24,9 +24,9 @@ const (
 			CONSTRAINT events_stream_stream_id_fk FOREIGN KEY (stream_id) REFERENCES streams(id)
     	)`
 	insertStreamSQL = `
-		INSERT INTO streams (id, type, version)
-		SELECT ?, ?, ?
-    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
+		INSERT INTO streams (id, type)
+		SELECT ?, ?
+    	WHERE NOT EXISTS (SELECT 1 FROM streams WHERE id = ?)`
 	getStreamVersionSQL = `
 		SELECT version FROM streams WHERE id = (?)`
 	incrementStreamVersionSQL = `

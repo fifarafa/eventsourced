@@ -9,6 +9,11 @@ import (
 	"log"
 )
 
+const (
+	minimalSafeIsolationLevel = "READ COMMITTED"
+	initialStreamVersion      = -1
+)
+
 func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
 	if err := setTransactionIsolationLevel(db, minimalSafeIsolationLevel); err != nil {
 		return fmt.Errorf("set transaction isolation level: %w", err)
@@ -127,8 +132,8 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	res, err := stmt.Exec(
-		streamID[:], streamType, -1,
-		streamID[:], -1,
+		streamID[:], streamType, initialStreamVersion,
+		streamID[:], initialStreamVersion,
 	)
 	//TODO check what error is returned here is stream already exists
 	if err != nil {

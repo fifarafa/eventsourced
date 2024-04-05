@@ -35,8 +35,6 @@ const (
 		INSERT INTO events (stream_id, version, data, type)
         SELECT ?, ?, ?, ?
         WHERE EXISTS (SELECT 1 FROM streams WHERE id = ? AND version = ?)`
-
-	minimalSafeIsolationLevel = "READ COMMITTED"
 )
 
 func setup() error {

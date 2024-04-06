@@ -44,6 +44,7 @@ func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessag
 		return fmt.Errorf("checking if stream exists: %w", err)
 	}
 	// what if now some other transaction creates the stream?
+	// this conditional insertions will work but only for commited data
 	if !doesExist {
 		_, err := createStream(tx, streamID, "test")
 		if err != nil {
@@ -59,50 +60,6 @@ func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessag
 		return fmt.Errorf("conditional increment stream version: %w", err)
 	}
 
-	return nil
-}
-
-func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
-	stmt, err := tx.Prepare(incrementStreamVersionSQL)
-	if err != nil {
-		return fmt.Errorf("prepare update stream version: %w", err)
-	}
-	res, err := stmt.Exec(version+1, id[:], version)
-	if err != nil {
-		return fmt.Errorf("exec update stream version: %w", err)
-	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected: %w", err)
-	}
-	if rows != 1 {
-		return fmt.Errorf("expected 1 row affected, got %d", rows)
-	}
-	return nil
-}
-
-// providedExpectedVersion should be equal to stream version saved in the db
-// because it means that decision is being made on the latest state
-// if it's different (smaller or bigger), the whole operation should be rejected
-func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
-	stmt, err := tx.Prepare(insertEventSQL)
-	if err != nil {
-		return fmt.Errorf("prepare insert event: %w", err)
-	}
-
-	res, err := stmt.Exec(
-		streamID[:], providedExpectedVersion+1, event, "test",
-		streamID[:], providedExpectedVersion)
-	if err != nil {
-		return fmt.Errorf("exec insert event: %w", err)
-	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected: %w", err)
-	}
-	if rows != 1 {
-		return fmt.Errorf("expected 1 row affected, got %d", rows)
-	}
 	return nil
 }
 
@@ -149,6 +106,50 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 	}
 	log.Print(streamID.String())
 	return streamID, nil
+}
+
+func incrementStreamVersion(tx *sql.Tx, id uuid.UUID, version int64) error {
+	stmt, err := tx.Prepare(incrementStreamVersionSQL)
+	if err != nil {
+		return fmt.Errorf("prepare update stream version: %w", err)
+	}
+	res, err := stmt.Exec(version+1, id[:], version)
+	if err != nil {
+		return fmt.Errorf("exec update stream version: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
+	return nil
+}
+
+// providedExpectedVersion should be equal to stream version saved in the db
+// because it means that decision is being made on the latest state
+// if it's different (smaller or bigger), the whole operation should be rejected
+func insertEvent(tx *sql.Tx, streamID uuid.UUID, providedExpectedVersion int64, event json.RawMessage) error {
+	stmt, err := tx.Prepare(insertEventSQL)
+	if err != nil {
+		return fmt.Errorf("prepare insert event: %w", err)
+	}
+
+	res, err := stmt.Exec(
+		streamID[:], providedExpectedVersion+1, event, "test",
+		streamID[:], providedExpectedVersion)
+	if err != nil {
+		return fmt.Errorf("exec insert event: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
+	return nil
 }
 
 func setTransactionIsolationLevel(db *sql.DB, level string) error {

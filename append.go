@@ -90,7 +90,7 @@ func createStream(tx *sql.Tx, streamID uuid.UUID, streamType string) (uuid.UUID,
 		return uuid.UUID{}, fmt.Errorf("exec insert stream: %w", err)
 	}
 	res, err := stmt.Exec(
-		streamID[:], streamType,
+		streamID[:], streamType, initialStreamVersion,
 		streamID[:],
 	)
 	//TODO check what error is returned here is stream already exists

@@ -24,11 +24,11 @@ To kickstart your event sourcing journey or deepen your understanding, we've cur
 ### Tier 1 Features - The Essentials
 - ✅ **Stream Creation** - Lay the foundation of your event sourcing with stream creation.
 - ✅ **Event Tables** - A place for your events to call home.
-- 🚧 **Appending Events** - We're working on making this process seamless, supporting:
+- ✅ **Appending Events** - We're working on making this process seamless, supporting:
   - Strong consistency for read-after-write peace of mind.
   - Optimistic Concurrency to keep data races at bay.
   - Batch event appending for efficiency.
-- **Event Retrieval** - Fetch events with flexibility, based on stream ID, version, or timestamp.
+- 🚧**Event Retrieval** - Fetch events with flexibility, based on stream ID, version, or timestamp.
 - **Storage Support** - We love Postgres and DynamoDB, and so does EventSourced! Full integration tests included.
 
 ### Tier 2 Features - The Upgrades

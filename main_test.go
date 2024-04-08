@@ -20,7 +20,10 @@ func TestWhenNoStreamsYet(t *testing.T) {
 
 	rawMsg := json.RawMessage(`{"key": "value"}`)
 	// when & then
-	if err := appendSingleEvent(db, uuid.New(), rawMsg, -1); err != nil {
+	streamID := uuid.New()
+	if err := appendSingleEvent(db, streamID, "invoice", rawMsg, -1); err != nil {
 		t.Errorf("failed to append event: %v", err)
 	}
+
+	// TODO load stream by streamID
 }

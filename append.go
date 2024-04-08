@@ -14,7 +14,7 @@ const (
 	initialStreamVersion      = -1
 )
 
-func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
+func appendSingleEvent(db *sql.DB, streamID uuid.UUID, streamType string, event json.RawMessage, providedExpectedVersion int64) error {
 	if err := setTransactionIsolationLevel(db, minimalSafeIsolationLevel); err != nil {
 		return fmt.Errorf("set transaction isolation level: %w", err)
 	}
@@ -27,7 +27,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 			log.Fatalf("rollback transaction: %v", err)
 		}
 	}()
-	if err := appendSingleEventInner(tx, streamID, event, providedExpectedVersion); err != nil {
+	if err := appendSingleEventInner(tx, streamID, streamType, event, providedExpectedVersion); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -38,7 +38,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, event json.RawMessage, pr
 
 // TODO add support for multiple events in a stream
 // TODO write benchmarks to see if tx.Prepare is faster than tx.Exec for multiple events
-func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessage, providedExpectedVersion int64) error {
+func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, streamType string, event json.RawMessage, providedExpectedVersion int64) error {
 	doesExist, err := streamExists(tx, streamID)
 	if err != nil {
 		return fmt.Errorf("checking if stream exists: %w", err)
@@ -46,7 +46,7 @@ func appendSingleEventInner(tx *sql.Tx, streamID uuid.UUID, event json.RawMessag
 	// what if now some other transaction creates the stream?
 	// this conditional insertions will work but only for commited data
 	if !doesExist {
-		_, err := createStream(tx, streamID, "test")
+		_, err := createStream(tx, streamID, streamType)
 		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
 		}

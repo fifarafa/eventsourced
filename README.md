@@ -50,4 +50,5 @@ Our journey is fueled by the incredible work of others. Here are a few repositor
 - https://railseventstore.org/docs/v2/expected_version/
 
 ## Questions for myself
+
 - how to handle sql migrations, so it's easy to use for users? how they did it in other libraries?

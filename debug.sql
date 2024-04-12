@@ -21,5 +21,5 @@ SELECT * FROM events;
 
 SELECT * FROM streams WHERE id = UUID_TO_BIN(@uuid) AND version = 0;
 
-DROP TABLE streams;
 DROP TABLE events;
+DROP TABLE streams;

@@ -69,7 +69,7 @@ func streamExists(tx *sql.Tx, streamID uuid.UUID) (bool, error) {
 		return false, fmt.Errorf("prepare select stream version: %w", err)
 	}
 	var version int64
-	err = stmt.QueryRow(streamID).Scan(&version)
+	err = stmt.QueryRow(streamID[:]).Scan(&version)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return false, nil

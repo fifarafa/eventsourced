@@ -42,6 +42,6 @@ func TestLoadStreamWithSingleEvent(t *testing.T) {
 	assert.Len(t, events, 1)
 }
 
-//func TestLoadStreamWithMultipleEvents(t *testing.T) {
-//
-//}
+func TestLoadStreamWithMultipleEvents(t *testing.T) {
+
+}

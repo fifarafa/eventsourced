@@ -45,3 +45,7 @@ func TestLoadStreamWithSingleEvent(t *testing.T) {
 func TestLoadStreamWithMultipleEvents(t *testing.T) {
 
 }
+
+func TestLoadStreamWithHugeAmountOfEvents(t *testing.T) {
+
+}

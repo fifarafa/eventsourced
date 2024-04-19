@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 )
@@ -60,7 +61,7 @@ func setupDatabase(db *sql.DB) error {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			log.Fatalf("rollback transaction: %v", err)
 		}
 	}()

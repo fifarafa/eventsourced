@@ -36,7 +36,7 @@ func appendSingleEvent(db *sql.DB, streamID uuid.UUID, streamType string, event 
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			log.Fatalf("rollback transaction: %v", err)
 		}
 	}()

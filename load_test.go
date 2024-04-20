@@ -8,8 +8,12 @@ import (
 )
 
 func TestLoadEmptyStream(t *testing.T) {
+	db, err := openMySQLConnection()
+	if err != nil {
+		t.Errorf("failed to open database: %v", err)
+	}
 	streamID := uuid.New()
-	events, err := loadStream(streamID)
+	events, err := loadStream(db, streamID)
 	if err != nil {
 		t.Errorf("failed to load stream: %v", err)
 	}
@@ -35,7 +39,7 @@ func TestLoadStreamWithSingleEvent(t *testing.T) {
 	}
 
 	// when & then
-	events, err := loadStream(streamID)
+	events, err := loadStream(db, streamID)
 	if err != nil {
 		t.Errorf("failed to load stream: %v", err)
 	}
@@ -60,20 +64,20 @@ func TestLoadStreamWithMultipleEvents(t *testing.T) {
 		t.Errorf("failed to append event: %v", err)
 	}
 
-	if err := appendSingleEvent(db, streamID, "invoice", rawMsg, -1); err != nil {
+	if err := appendSingleEvent(db, streamID, "invoice", rawMsg, 0); err != nil {
 		t.Errorf("failed to append event: %v", err)
 	}
 
-	if err := appendSingleEvent(db, streamID, "invoice", rawMsg, -1); err != nil {
+	if err := appendSingleEvent(db, streamID, "invoice", rawMsg, 1); err != nil {
 		t.Errorf("failed to append event: %v", err)
 	}
 
 	// when & then
-	events, err := loadStream(streamID)
+	events, err := loadStream(db, streamID)
 	if err != nil {
 		t.Errorf("failed to load stream: %v", err)
 	}
-	assert.Len(t, events, 1)
+	assert.Len(t, events, 3)
 }
 
 func TestLoadStreamWithHugeAmountOfEvents(t *testing.T) {

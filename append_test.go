@@ -25,7 +25,7 @@ func TestWhenNoStreamsYet(t *testing.T) {
 		t.Errorf("failed to append event: %v", err)
 	}
 
-	events, err := loadStream(streamID)
+	events, err := loadStream(db, streamID)
 	if err != nil {
 		t.Errorf("failed to load stream: %v", err)
 	}

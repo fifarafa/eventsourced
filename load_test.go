@@ -80,8 +80,31 @@ func TestLoadStreamWithMultipleEvents(t *testing.T) {
 	assert.Len(t, events, 3)
 }
 
-func TestLoadStreamWithHugeAmountOfEvents(t *testing.T) {
+func TestLoadStreamWithBigAmountOfEvents(t *testing.T) {
+	// given
+	if err := setup(); err != nil {
+		t.Errorf("setup failed: %v", err)
+	}
 
+	db, err := openMySQLConnection()
+	if err != nil {
+		t.Errorf("failed to open database: %v", err)
+	}
+
+	rawMsg := json.RawMessage(`{"key": "value"}`)
+	streamID := uuid.New()
+
+	for i := 0; i < 1000; i++ {
+		if err := appendSingleEvent(db, streamID, "invoice", rawMsg, int64(i-1)); err != nil {
+			t.Errorf("failed to append event: %v", err)
+		}
+	}
+	// when & then
+	events, err := loadStream(db, streamID)
+	if err != nil {
+		t.Errorf("failed to load stream: %v", err)
+	}
+	assert.Len(t, events, 1000)
 }
 
 func TestLoadStreamInConcurrentEnvironment(t *testing.T) {

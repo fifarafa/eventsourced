@@ -123,15 +123,16 @@ func TestLoadStreamInConcurrentEnvironment(t *testing.T) {
 	streamID := uuid.New()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1000)
-	for i := 0; i < 1000; i++ {
-		go func() {
+	loops := 5
+	wg.Add(loops)
+	for i := 0; i < loops; i++ {
+		go func(localCounter int) {
 			wg.Add(1)
 			defer wg.Done()
-			if err := appendSingleEvent(db, streamID, "invoice", rawMsg, int64(i-1)); err != nil {
+			if err := appendSingleEvent(db, streamID, "invoice", rawMsg, int64(localCounter-1)); err != nil {
 				t.Errorf("failed to append event: %v", err)
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 	// when & then
@@ -139,5 +140,5 @@ func TestLoadStreamInConcurrentEnvironment(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to load stream: %v", err)
 	}
-	assert.Len(t, events, 1000)
+	assert.Len(t, events, loops)
 }

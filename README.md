@@ -28,7 +28,7 @@ To kickstart your event sourcing journey or deepen your understanding, we've cur
   - Strong consistency for read-after-write peace of mind.
   - Optimistic Concurrency to keep data races at bay.
   - Batch event appending for efficiency.
-- 🚧**Event Retrieval** - Fetch events with flexibility, based on stream ID, version, or timestamp.
+- ✅ **Event Retrieval** - Fetch events with flexibility, based on stream ID, version, or timestamp.
 - **Storage Support** - We love Postgres and DynamoDB, and so does EventSourced! Full integration tests included.
 
 ### Tier 2 Features - The Upgrades

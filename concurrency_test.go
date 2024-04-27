@@ -17,13 +17,18 @@ func TestName(t *testing.T) {
 	person.GrowOlder()
 	repo.Save(person)
 	twin := Person{}
-	repo.Get(person.Id, &twin)
+	repo.Get(person.ID(), &twin)
 }
 
 type Person struct {
 	eventsourcing.AggregateRoot
 	Name string
 	Age  int
+}
+
+// GrowOlder command
+func (person *Person) GrowOlder() {
+	person.TrackChange(person, &AgedOneYear{})
 }
 
 // Transition the person state dependent on the events

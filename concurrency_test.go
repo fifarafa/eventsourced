@@ -4,18 +4,39 @@ import (
 	"errors"
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
+	"log"
+	"sync"
 	"testing"
 )
 
-func TestName(t *testing.T) {
+func TestConcurrencySaves(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
 
-	// the person aggregate has to be registered in the repository
 	repo.Register(&Person{})
 
 	person, _ := CreatePerson("Alice")
 	person.GrowOlder()
-	repo.Save(person)
+
+	for i := 0; i < 1000; i++ {
+		repo.Save(person)
+	}
+
+	loops := 5
+	wg := sync.WaitGroup{}
+	wg.Add(loops)
+	for i := 0; i < loops; i++ {
+		go func(localCounter int) {
+			wg.Add(1)
+			defer wg.Done()
+			if err := repo.Save(person); err != nil {
+				t.Errorf("failed to save event: %v", err)
+				return
+			}
+			log.Println("saved event")
+		}(i)
+	}
+	wg.Wait()
+
 	twin := Person{}
 	repo.Get(person.ID(), &twin)
 }
